@@ -1,0 +1,25 @@
+///sock_init()
+enum Sock{
+    PING,
+    LOGIN,
+    REGISTER,
+    MESSAGE,
+    MOVE,
+    JOIN,
+    WARNING,
+    KICK,
+    BAN,
+    UPDATEINFO,
+    UPDATEFILE,
+    CHANGEMAP,
+    BATTLE_REQUEST,
+    BATTLE_ACT,
+    UPLOADCHAR,
+    UPLOAD_MAP,
+    FRIEND_REQUEST,
+    RPS_REQUEST,
+    RPS_ACT,
+    XO_ACT,
+    BATTLESHIPS_ACT,
+    MAPEDIT
+}
