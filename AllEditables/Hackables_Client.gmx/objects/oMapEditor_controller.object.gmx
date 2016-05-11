@@ -30,6 +30,9 @@
 
 //show_debug_overlay(1);
 //global.waitReply = 0;
+
+
+TEST_col = 0;
 </string>
           </argument>
         </arguments>
@@ -57,11 +60,22 @@ mxprev = device_mouse_x_to_gui(0);
 myprev = device_mouse_y_to_gui(0);
 mxFrom = 0;
 myFrom = 0;
-display_set_gui_size(room_width,room_height);
+//display_set_gui_size(room_width,room_height);
+/*display_set_gui_maximise();
+surface_resize(application_surface, display_get_gui_width(), display_get_gui_height()); 
+view_wview = display_get_gui_width();
+view_hview = display_get_gui_height();
+view_wport = view_wview;
+view_hport = view_hview;*/
 
-me_overlaySurf = surface_create(room_width,room_height);
+qSend = 0;
 
-me_surf = surface_create(room_width,room_height);
+me_overlaySurf = surface_create(room_width,room_width);
+surface_set_target(me_overlaySurf);
+draw_clear_alpha(0,0);
+surface_reset_target();
+
+me_surf = surface_create(room_width,room_width);
 surface_set_target(me_surf);
 draw_clear_alpha(irandom(c_white),1);
 surface_reset_target();
@@ -104,6 +118,7 @@ tool_current = tool[# 0,0];
 var k=0;
 me_toolsSurf = surface_create(tool_w*tool_cellSize,tool_h*tool_cellSize);
 surface_set_target(me_toolsSurf);
+draw_clear_alpha(0,0);
 for(var i=0; i&lt;tool_h; i++) for(var j=0; j&lt;tool_w; j++){
     draw_sprite_stretched(sTools,k, j*tool_cellSize, i*tool_cellSize,tool_cellSize,tool_cellSize);
     draw_set_color(c_ltgray);
@@ -114,7 +129,7 @@ for(var i=0; i&lt;tool_h; i++) for(var j=0; j&lt;tool_w; j++){
 draw_sprite(sTools_width,0,0, (i-2)*tool_cellSize);
 surface_reset_target();
 
-window_tools = instance_create(0,256,oMapEditor_window_tools);
+window_tools = instance_create(view_wview-tool_w*tool_cellSize,0,oMapEditor_window_tools);
 with(window_tools)
 {
     w = other.tool_w*other.tool_cellSize;
@@ -171,6 +186,7 @@ show_message_async("למחיקת המפה וצביעת הרקע, בחרו צבע
             <string>///Clean the overlay
 surface_set_target(me_overlaySurf);
 draw_clear_alpha(0,0);
+//draw_background_stretched(tex_colour,0,0,room_width,room_height);
 surface_reset_target();
 </string>
           </argument>
@@ -280,6 +296,48 @@ else //use current tool
             <string>///mouse vars
 mxprev = mx;
 myprev = my;
+</string>
+          </argument>
+        </arguments>
+      </action>
+    </event>
+    <event eventtype="7" enumb="63">
+      <action>
+        <libid>1</libid>
+        <id>603</id>
+        <kind>7</kind>
+        <userelative>0</userelative>
+        <isquestion>0</isquestion>
+        <useapplyto>-1</useapplyto>
+        <exetype>2</exetype>
+        <functionname></functionname>
+        <codestring></codestring>
+        <whoName>self</whoName>
+        <relative>0</relative>
+        <isnot>0</isnot>
+        <arguments>
+          <argument>
+            <kind>1</kind>
+            <string>var i_d,stat;
+i_d = async_load[? "id"];
+
+switch(i_d){
+case qSend: //send map
+    if ds_map_find_value(async_load, "status"){
+        buffer_seek(wbuff,0,0);
+        buffer_write(wbuff,buffer_u8,Sock.UPLOAD_MAP);
+        buffer_write(wbuff, buffer_u16, global.map_x_edit);
+        buffer_write(wbuff, buffer_u16, global.map_y_edit);
+        
+        var tbuff = buffer_create(1024*768*4,buffer_fixed,4);
+        buffer_get_surface(tbuff,oMapEditor_controller.me_surf,0,0,0);
+        buffer_copy(tbuff,0,buffer_get_size(tbuff),wbuff,buffer_tell(wbuff));
+        
+        buffer_delete(tbuff);
+        network_send_packet(server,wbuff,buffer_get_size(wbuff));
+    }
+    break;
+}
 </string>
           </argument>
         </arguments>
@@ -396,20 +454,7 @@ case "width":
     tool_current = tool_previous;
     break;
 case "send":
-    var q = show_question("לשלוח את המפה?#לא יתאפשרו שינויים נוספים");
-    if(q){
-        buffer_seek(wbuff,0,0);
-        buffer_write(wbuff,buffer_u8,Sock.UPLOAD_MAP);
-        buffer_write(wbuff, buffer_u16, global.map_x_edit);
-        buffer_write(wbuff, buffer_u16, global.map_y_edit);
-        
-        var tbuff = buffer_create(1024*768*4,buffer_fixed,4);
-        buffer_get_surface(tbuff,oMapEditor_controller.me_surf,0,0,0);
-        buffer_copy(tbuff,0,buffer_get_size(tbuff),wbuff,buffer_tell(wbuff));
-        
-        buffer_delete(tbuff);
-        network_send_packet(server,wbuff,buffer_get_size(wbuff));
-    }
+    qSend = show_question_async("לשלוח את המפה?#לא יתאפשרו שינויים נוספים");
     tool_current = "pen";
     break;
 case "undo":
@@ -445,6 +490,10 @@ surface_free(me_overlaySurf);
 surface_free(me_toolsSurf);
 ds_grid_destroy(tool);
 buffer_delete(me_buffBack);
+
+with(oMapEditor_window_colour) instance_destroy();
+with(oMapEditor_window_tools) instance_destroy();
+with(oMapEditor_button_send) instance_destroy();
 </string>
           </argument>
         </arguments>
@@ -471,8 +520,12 @@ buffer_delete(me_buffBack);
 if(!surface_exists(me_overlaySurf)) me_overlaySurf = surface_create(room_width,room_height);
 
 draw_set_colour(0);
+draw_rectangle(0,0,surface_get_width(me_surf)+4,surface_get_height(me_surf)+4,0);
 draw_surface(me_surf,0,0);
 draw_surface(me_overlaySurf,0,0);
+
+//TEST_col = draw_getpixel(mouse_x,mouse_y);
+//draw_circle_colour(mouse_x+64,mouse_y+64,16,TEST_col,TEST_col,0);
 </string>
           </argument>
         </arguments>
@@ -497,7 +550,13 @@ draw_surface(me_overlaySurf,0,0);
             <kind>1</kind>
             <string>/*var q = show_question("לצאת?#השינויים לא ישמרו!");
 
-if(q) */room_goto(rLoadMap);
+if(q) room_goto(rLoadMap);*/
+
+buffer_seek(wbuff,0,0);
+buffer_write(wbuff,buffer_u8,Sock.MAPEDITSTOP);
+network_send_packet(server,wbuff,buffer_tell(wbuff));
+
+room_goto(rLoadMap);
 </string>
           </argument>
         </arguments>

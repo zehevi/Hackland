@@ -21,5 +21,6 @@ enum Sock{
     RPS_ACT,
     XO_ACT,
     BATTLESHIPS_ACT,
-    MAPEDIT
+    MAPEDIT,
+    MAPEDITSTOP
 }

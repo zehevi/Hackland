@@ -137,7 +137,7 @@ if(window_colour.visible &amp;&amp; global.mode==Mode.CREATIVE)
             sch = floor((my-window.y-window.window_top)*64/window.h);
             if(mouse_check_button_pressed(mb_left)){
                 scwPrev = scw;
-                schPrev = scw;
+                schPrev = sch;
             }
             surface_set_target(cm_Surf);
             if(mouse_check_button(mb_left)){

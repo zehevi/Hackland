@@ -88,14 +88,17 @@ case Sock.MOVE:
         _spr = buffer_read(tbuff,buffer_u16); //useless?
         _map_x = map_x; //get map position for sending data to users only in the current map
         _map_y = map_y;
+        _map = map;
     }
     
     buffer_seek(wbuff,0,0);
     buffer_write(wbuff,buffer_u8,Sock.MOVE);
     
     var usrmap = ds_grid_get(global.maps_users, _map_x, _map_y);
-    var lst = ds_list_create();
-    var n=0; for(var i=0; i<ds_list_size(usrmap); i++) with(usrmap[| i]) if(name!="spectate") ds_list_add(lst,usrmap[| i]);
+    var lst = ds_list_create(); ds_list_clear(lst);
+    var n=0;
+    for(var i=0; i<ds_list_size(usrmap); i++) with(usrmap[| i])
+        if(name!="spectate" && (usrmap[| i]).map==_map) ds_list_add(lst,usrmap[| i]);
     buffer_write(wbuff,buffer_u8,ds_list_size(lst));
     for(var i=0; i<ds_list_size(lst); i++)
     {
@@ -116,12 +119,14 @@ case Sock.MOVE:
 case Sock.CHANGEMAP:
     var xx = buffer_read(tbuff,buffer_s8);
     var yy = buffer_read(tbuff,buffer_s8);
+    var inst = Clients[? tsock];
+    var _map = global.maps[# inst.map_x+xx,inst.map_y+yy];
     
     buffer_seek(wbuff,0,0);
     buffer_write(wbuff,buffer_u8,Sock.CHANGEMAP);
     
-    with(Clients[? tsock]){
-        if(ds_grid_get(global.maps,map_x+xx,map_y+yy)!="nomap"){
+    with(inst){
+        if(_map!="nomap"){
             var _l = ds_grid_get(global.maps_users, map_x, map_y);
             ds_list_delete(_l, ds_list_find_index(_l,id));
             map_x += xx;
@@ -131,10 +136,17 @@ case Sock.CHANGEMAP:
             ds_list_add(ds_grid_get(global.maps_users, map_x, map_y), id);
             buffer_write(wbuff,buffer_u8,map_x);
             buffer_write(wbuff,buffer_u8,map_y);
-        }else{ //let player move to edit mode
-            map = "editable";
-            buffer_write(wbuff,buffer_u8,map_x+xx);
-            buffer_write(wbuff,buffer_u8,map_y+yy);
+        }else{ //Unmapped area, let user switch to edit mode
+            var _mapxy = string(inst.map_x+xx)+string(inst.map_y+yy);
+            if( ds_map_exists(global.MapsInEdit,_mapxy) ){ //NOT Possible
+                buffer_write(wbuff,buffer_u8,map_x);
+                buffer_write(wbuff,buffer_u8,map_y);
+            }else{
+                global.MapsInEdit[? _mapxy] = tsock; logAdd(_mapxy);
+                map = "editable";
+                buffer_write(wbuff,buffer_u8,map_x+xx);
+                buffer_write(wbuff,buffer_u8,map_y+yy);
+            }
         }
         buffer_write(wbuff,buffer_string,map); //Map filename
         buffer_write(wbuff,buffer_string,map_mask); //Map mask filename
@@ -273,6 +285,19 @@ case Sock.UPLOAD_MAP:
         buffer_write(wbuff,buffer_u8,Sock.UPLOAD_MAP);
         buffer_write(wbuff,buffer_bool,1); //success
         network_send_packet(tsock,wbuff,buffer_tell(wbuff));
+    }
+    break;
+case Sock.MAPEDITSTOP: //tells the server to stop reserving this location
+    var inst = Clients[? tsock];
+    with(inst) map = ds_grid_get(global.maps,map_x,map_y);
+    //find and delete clients sock from list of editing maps
+    var k = ds_map_find_first(global.MapsInEdit);
+    repeat(ds_map_size(global.MapsInEdit)){
+        if(tsock == global.MapsInEdit[? k]){
+            ds_map_delete(global.MapsInEdit,k);
+            break;
+        }
+        k = ds_map_find_next(global.MapsInEdit,k);
     }
     break;
 case Sock.FRIEND_REQUEST:

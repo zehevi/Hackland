@@ -7,6 +7,16 @@ with(Clients[? tsock])
     ds_map_delete(Clients,tsock);
     var usrmap = ds_grid_get(global.maps_users,map_x,map_y);
     ds_list_delete(usrmap,ds_list_find_index(usrmap,id));
+    
+    var k = ds_map_find_first(global.MapsInEdit);
+    repeat(ds_map_size(global.MapsInEdit)){
+        if(tsock == global.MapsInEdit[? k]){
+            ds_map_delete(global.MapsInEdit,k);
+            break;
+        }
+        k = ds_map_find_next(global.MapsInEdit,k);
+    }
+    
     instance_destroy();
 }
 

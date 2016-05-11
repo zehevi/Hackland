@@ -654,8 +654,13 @@ case Sock.UPLOADCHAR:
     break;
 case Sock.UPLOAD_MAP:
     var i = buffer_read(tbuff,buffer_bool);
-    if(i) show_message_async("המפה נקלטה בהצלחה")
-    else{
+    if(i){
+        show_message_async("המפה נקלטה בהצלחה")
+        buffer_seek(wbuff,0,0);
+        buffer_write(wbuff,buffer_u8,Sock.MAPEDITSTOP);
+        network_send_packet(server,wbuff,buffer_tell(wbuff));
+        room_goto(rLoadMap);
+    }else{
         with(oMapEditor_controller) surface_save(me_surf,APPDATA+"autoSave_map.png");//buffer_set_surface(me_buffBack,me_surf,0,0,0);
         show_message_async("המפה לא נקלטה#נסו מיקום אחר");
     }

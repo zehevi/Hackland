@@ -94,6 +94,7 @@ clipboard_set_text(APPDATA); //save for later use
 global.maps = ds_grid_create(128,128);
 global.maps_mask = ds_grid_create(128,128);
 global.maps_name = ds_grid_create(128,128);
+global.MapsInEdit = ds_map_create();
 
 global.maps_users = ds_grid_create(128,128);
 for(var i=0; i&lt;ds_grid_width(global.maps_users); i++)
